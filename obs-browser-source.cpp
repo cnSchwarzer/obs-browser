@@ -659,7 +659,7 @@ void BrowserSource::Render()
 {
 	bool flip = false;
 #ifdef ENABLE_BROWSER_SHARED_TEXTURE
-	flip = hwaccel;
+	flip = false;
 #endif
 
 	if (texture) {
