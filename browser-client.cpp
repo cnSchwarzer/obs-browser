@@ -384,13 +384,9 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>,
 		return;
 	}
 
-#ifndef _WIN32
-	if (shared_handle == bs->last_handle)
-		return;
-#endif
-
 	obs_enter_graphics();
 
+#if !(CHROME_VERSION_BUILD >= 5615)
 	if (bs->texture) {
 #ifdef _WIN32
 		//gs_texture_release_sync(bs->texture, 0);
@@ -398,18 +394,36 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>,
 		gs_texture_destroy(bs->texture);
 		bs->texture = nullptr;
 	}
+#endif
 
 #if defined(__APPLE__) && CHROME_VERSION_BUILD > 4183
 	bs->texture = gs_texture_create_from_iosurface(
 		(IOSurfaceRef)(uintptr_t)shared_handle);
 #elif defined(_WIN32) && CHROME_VERSION_BUILD >= 5615
 	gs_texture_t *const tex =
-		gs_texture_open_nt_shared((uint32_t)(uintptr_t)shared_handle);
-	bs->texture = gs_texture_create(gs_texture_get_width(tex),
-					gs_texture_get_height(tex),
-					gs_texture_get_color_format(tex), 1,
-					nullptr, 0);
+		gs_texture_open_nt_shared(static_cast<uint32_t>(
+			reinterpret_cast<uintptr_t>(shared_handle)));
+
+	gs_texture_acquire_sync(tex, 0, INFINITE);
+
+	uint32_t width = gs_texture_get_width(tex);
+	uint32_t height = gs_texture_get_height(tex);
+
+	if (bs->width != width || bs->height != height) {
+		bs->DestroyTextures();
+	}
+
+	if (!bs->texture && width && height) {
+		bs->texture = gs_texture_create(width, height, GS_BGRA, 1,
+						nullptr, 0);
+		bs->width = width;
+		bs->height = height;
+	}
+
 	gs_copy_texture(bs->texture, tex);
+
+	gs_texture_release_sync(tex, 0);
+
 #elif defined(_WIN32) && CHROME_VERSION_BUILD > 4183
 	bs->texture =
 		gs_texture_open_nt_shared((uint32_t)(uintptr_t)shared_handle);
@@ -422,8 +436,6 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>,
 #endif
 	UpdateExtraTexture();
 	obs_leave_graphics();
-
-	bs->last_handle = shared_handle;
 }
 
 #ifdef CEF_ON_ACCELERATED_PAINT2
