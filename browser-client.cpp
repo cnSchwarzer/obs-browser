@@ -408,21 +408,24 @@ void BrowserClient::OnAcceleratedPaint(CefRefPtr<CefBrowser>,
 
 	uint32_t width = gs_texture_get_width(tex);
 	uint32_t height = gs_texture_get_height(tex);
+	gs_color_format format = gs_texture_get_color_format(tex);
 
-	if (bs->width != width || bs->height != height) {
+	if (bs->width != width || bs->height != height || bs->last_format != format) {
 		bs->DestroyTextures();
 	}
 
 	if (!bs->texture && width && height) {
-		bs->texture = gs_texture_create(width, height, GS_BGRA, 1,
+		bs->texture = gs_texture_create(width, height, format, 1,
 						nullptr, 0);
 		bs->width = width;
 		bs->height = height;
+		bs->last_format = format;
 	}
 
 	gs_copy_texture(bs->texture, tex);
 
 	gs_texture_release_sync(tex, 0);
+	gs_texture_destroy(tex);
 
 #elif defined(_WIN32) && CHROME_VERSION_BUILD > 4183
 	bs->texture =
