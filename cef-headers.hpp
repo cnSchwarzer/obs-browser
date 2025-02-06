@@ -34,6 +34,7 @@
 #include <include/cef_parser.h>
 #include <include/cef_scheme.h>
 #include <include/cef_version.h>
+#include <include/cef_version_info.h>
 #include <include/cef_render_process_handler.h>
 #include <include/cef_request_context_handler.h>
 #include <include/cef_jsdialog_handler.h>
